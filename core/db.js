@@ -1,0 +1,31 @@
+const Sequelize = require('sequelize');
+const {
+  dbName,
+  user,
+  port,
+  host,
+  password,
+} = require('../config/config').database
+const sequelize = new Sequelize(dbName, user, password, {
+  host,
+  port,
+  dialect: 'mysql',
+  logging: true,
+  timezone: '+08:00', //服务器时间
+  define: {
+    underscored: true, //转换列名的驼峰命名规则为下划线命令规则
+    paranoid: true, //	使用逻辑删除。设置为true后，调用 destroy 方法时将不会删队模型，而是设置一个 deletedAt 列。此设置需要 timestamps=true
+    timestamps: true, //为模型添加 createdAt 和 updatedAt 两个时间戳字段
+    freezeTableName: true, // Model 对应的表名将与model名相同
+    createdAt: 'created_at', // 别名
+    updatedAt: 'updated_at',
+    deletedAt: 'deleted_at',
+  }
+})
+// 创建模型
+sequelize.sync({
+  force: false
+})
+module.exports = {
+  sequelize
+}
