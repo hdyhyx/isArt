@@ -10,7 +10,8 @@ const {
   hasExpireTime
 } = require('../core/util')
 const {
-  LoginType
+  LoginType,
+  LoginVerifyType
 } = require('../app/lib/enum')
 
 
@@ -36,9 +37,12 @@ class PhoneValidator extends LinValidator {
   }
 }
 
-class ExpireTimeValidator extends PhoneValidator {
+class ExpireTimeValidator extends LinValidator {
   constructor() {
     super()
+    this.phone = [
+      new Rule('matches', '手机号码不符合规范', PHONE_REG)
+    ]
   }
   async validateExpireTime(vals) {
     const phone = vals.body.phone
@@ -98,7 +102,10 @@ class LoginValidator extends LinValidator {
   constructor() {
     super()
     this.account = [
-      new Rule('matches', '手机号码不符合规范', PHONE_REG)
+      new Rule('isLength', '不符合账号规则', {
+        min: 4,
+        max: 32
+      })
     ]
     this.secret = [
       new Rule('isOptional'),
@@ -115,11 +122,32 @@ class LoginValidator extends LinValidator {
       })
     ]
   }
-  validatePhoneAndCode(vals) {
-    if (!vals.body.code && !vals.body.secret) {
-      throw new Error('请选择一种方式登录')
+  validateLoginVerifyType(vals) {
+    if (vals.body.type === LoginType.USER_MOBILE) {
+      if (!vals.body.verifyType) {
+        throw new Error('verifyType是必须参数')
+      }
+      if (!LoginVerifyType.isThisType(vals.body.verifyType)) {
+        throw new Error('verifyType参数不合法')
+      }
+      switch (vals.body.verifyType) {
+        case LoginVerifyType.USER_SMS_COED:
+          if (!vals.body.code) {
+            throw new Error('验证不可为空')
+          }
+          break;
+        case LoginVerifyType.USER_PASSWORD:
+          if (!vals.body.secret) {
+            throw new Error('密码不可为空')
+          }
+          break;
+        default:
+          throw new Error('请选择一种方式登录')
+          break;
+      }
     }
   }
+
   validateLoginType(vals) {
     if (!vals.body.type) {
       throw new Error('type是必须参数')

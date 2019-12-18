@@ -1,4 +1,12 @@
-const Sequelize = require('sequelize');
+const {
+  Sequelize,
+  Model
+} = require('sequelize');
+const {
+  clone,
+  unset,
+  isArray
+} = require('lodash')
 const {
   dbName,
   user,
@@ -26,6 +34,34 @@ const sequelize = new Sequelize(dbName, user, password, {
 sequelize.sync({
   force: false
 })
+
+Model.prototype.toJSON = function () {
+  // let data = this.dataValues
+  let data = clone(this.dataValues)
+  unset(data, 'updated_at')
+  unset(data, 'created_at')
+  unset(data, 'deleted_at')
+
+  for (key in data) {
+    if (key === 'image') {
+      if (!data[key].startsWith('http'))
+        data[key] = global.config.host + data[key]
+    }
+  }
+
+  if (isArray(this.exclude)) {
+    this.exclude.forEach(
+      (value) => {
+        unset(data, value)
+      }
+    )
+  }
+  return data
+}
+
+module.exports = {
+  sequelize
+}
 module.exports = {
   sequelize
 }

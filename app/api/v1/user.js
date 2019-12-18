@@ -11,12 +11,15 @@ const {
 } = require('../../module/user')
 const {
   createCode,
-  createUid
+  createUid,
+  generateToken
 } = require('../../../core/util')
 const {
   LoginType
 } = require('../../lib/enum')
-
+const {
+  WXManager
+} = require('../../services/wx')
 
 const router = new Router({
   prefix: '/v1/user'
@@ -36,15 +39,23 @@ router.post('/register', async (ctx, next) => {
 
 router.post('/login', async (ctx, next) => {
   const v = await new LoginValidator().validate(ctx)
+  const account = v.get('body.account')
+  const code = v.get('body.code')
+  let token
   switch (v.get('body.type')) {
     case LoginType.USER_MOBILE:
-
+      const secret = v.get('body.secret')
+      const verifyType = v.get('body.verifyType')
+      token = await LoginVerifyType(account, secret, code, verifyType)
       break;
     case LoginType.USER_MINI_PROGRAM:
-
+      token = await WXManager.codeToToken(account)
       break;
     default:
       break;
+  }
+  ctx.body = {
+    token
   }
 })
 
@@ -58,9 +69,15 @@ router.post('/validateCode', async (ctx, next) => {
   const result = await Code.create(code)
 })
 
-//手机号码登录
-function loginTypePwdAndCode(ctx) {
-
+//手机号码登录  
+async function LoginVerifyType(account, secret, code, verifyType) {
+  const user = await User.loginTypePwdOrSMS(
+    account,
+    secret,
+    code,
+    verifyType
+  )
+  return generateToken(user.id, 8)
 }
 
 // 短信验证码过期时间

@@ -6,13 +6,32 @@ const {
 const {
   sequelize
 } = require('../../core/db')
-
 const {
   hasExpireTime
 } = require('../../core/util')
+const {
+  LoginVerifyType
+} = require('../lib/enum')
 
 class User extends Model {
-  static async verifyPhonePassword(phone, plainPassword, code) {
+  static async getUserByOpenid(openid) {
+    const user = await User.findOne({
+      where: {
+        openid
+      }
+    })
+    return user
+  }
+
+  static async createUserByOpenid(openid, uid) {
+    const user = await User.create({
+      openid,
+      id: uid
+    })
+    return user
+  }
+
+  static async loginTypePwdOrSMS(phone, plainPassword, code, verifyType) {
     const user = await User.findOne({
       where: {
         phone
@@ -21,22 +40,32 @@ class User extends Model {
     if (!user) {
       throw new global.errs.AuthFailed('该用户不存在')
     }
-    if (!plainPassword === '' || !plainPassword === null) {
-      // user.password === plainPassword
-      const correct = bcrypt.compareSync(
-        plainPassword, user.password)
-      if (!correct) {
-        throw new global.errs.AuthFailed('密码不正确')
-      }
-    } else {
-      await Code.validateExpireTime(phone, code)
+    switch (verifyType) {
+      //短信验证登录
+      case LoginVerifyType.USER_SMS_COED:
+        await Code.validateExpireTime(phone, code)
+        break;
+        //密码登录
+      case LoginVerifyType.USER_PASSWORD:
+        const correct = bcrypt.compareSync(
+          plainPassword, user.password)
+        if (!correct) {
+          throw new global.errs.AuthFailed('密码不正确')
+        }
+        break;
+
+      default:
+        break;
+    }
+    if (LoginVerifyType.USER_PASSWORD === verifyType) {
+
     }
     return user
   }
 }
 User.init({
   id: {
-    type: Sequelize.STRING,
+    type: Sequelize.STRING(8),
     primaryKey: true
   },
   nickname: Sequelize.STRING,
